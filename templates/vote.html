@@ -1,0 +1,405 @@
+
+{% extends "base.html" %}
+
+{% block title %}Vote{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h1 class="fw-bold">Cast Your Vote</h1>
+        <p class="text-muted">Securely vote in the current election</p>
+    </div>
+    
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body p-4">
+                    <div id="step1" class="voting-step">
+                        <h5 class="card-title">Identity Verification</h5>
+                        <p class="text-muted mb-4">Before you can vote, we need to verify your identity using facial recognition.</p>
+                        
+                        <div class="text-center mb-4">
+                            <div id="camera-container" class="position-relative mx-auto" style="max-width: 500px;">
+                                <video id="webcam" class="w-100 border rounded" autoplay playsinline></video>
+                                <div id="face-outline" class="position-absolute" style="border: 2px dashed #6c757d; border-radius: 50%; width: 200px; height: 200px; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+                            </div>
+                            <canvas id="canvas" class="d-none"></canvas>
+                            
+                            <div id="verification-progress" class="d-none position-absolute bottom-0 start-0 end-0 p-3">
+                                <div class="bg-white p-3 rounded shadow">
+                                    <p class="mb-2 fw-medium">Verifying your identity...</p>
+                                    <div class="progress" style="height: 6px;">
+                                        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="button" id="verify-btn" class="btn btn-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-shield-check me-2" viewBox="0 0 16 16">
+                                    <path d="M5.338 1.59a61 61 0 0 0-2.837.856.48.48 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.7 10.7 0 0 0 2.287 2.233c.346.244.652.42.893.533q.18.085.293.118a1 1 0 0 0 .101.025 1 1 0 0 0 .1-.025q.114-.034.294-.118c.24-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.8 11.8 0 0 1-2.517 2.453 7 7 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7 7 0 0 1-1.048-.625 11.8 11.8 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 63 63 0 0 1 5.072.56z"/>
+                                    <path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/>
+                                </svg>
+                                Verify Identity
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="step2" class="voting-step d-none">
+                        <h5 class="card-title">Select Your Candidate</h5>
+                        <p class="text-muted mb-4">Choose the candidate you want to vote for</p>
+                        
+                        <div class="mb-4">
+                            <label for="candidate" class="form-label">Select a Candidate</label>
+                            <select class="form-select" id="candidate">
+                                <option value="" selected disabled>Select a candidate</option>
+                                {% for candidate in candidates %}
+                                <option value="{{ candidate.id }}">{{ candidate.name }} - {{ candidate.party }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div id="candidate-preview" class="card mb-4 d-none">
+                            <div class="card-body">
+                                <h6 id="preview-name" class="card-title"></h6>
+                                <p id="preview-party" class="card-subtitle mb-2 text-muted"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <p class="mb-0">Please review your selection carefully. You can only vote once, and your vote cannot be changed after submission.</p>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="button" id="step2-next" class="btn btn-primary" disabled>Continue</button>
+                        </div>
+                    </div>
+                    
+                    <div id="step3" class="voting-step d-none">
+                        <h5 class="card-title">Confirm Your Vote</h5>
+                        <p class="text-muted mb-4">Review and confirm your selection</p>
+                        
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 id="confirm-name" class="mb-1"></h6>
+                                        <p id="confirm-party" class="mb-0 text-muted"></p>
+                                    </div>
+                                    <div class="badge bg-primary bg-opacity-10 text-primary px-3 py-2">
+                                        Selected
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <h6 class="alert-heading fw-bold">Important: This action cannot be undone</h6>
+                            <p class="mb-0">By clicking "Cast Vote" below, you confirm that this is your final selection. You can only vote once in this election.</p>
+                        </div>
+                        
+                        <div class="d-flex gap-3">
+                            <button type="button" id="step3-back" class="btn btn-outline-secondary flex-grow-1">Change Selection</button>
+                            <button type="button" id="cast-vote-btn" class="btn btn-primary flex-grow-1">Cast Vote</button>
+                        </div>
+                    </div>
+                    
+                    <div id="success" class="voting-step d-none text-center py-4">
+                        <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center mx-auto mb-4" style="width: 80px; height: 80px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="currentColor" class="bi bi-check-lg text-success" viewBox="0 0 16 16">
+                                <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
+                            </svg>
+                        </div>
+                        
+                        <h5 class="fw-bold">Vote Cast Successfully!</h5>
+                        <p class="text-muted mb-4">Your vote has been securely recorded. Thank you for participating in the election.</p>
+                        
+                        <div>
+                            <button type="button" id="return-home" class="btn btn-outline-primary">Return to Start</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentStep = 1;
+    let videoStream = null;
+    let faceImageData = null;
+    let selectedCandidate = null;
+    const steps = [
+        document.getElementById('step1'),
+        document.getElementById('step2'),
+        document.getElementById('step3'),
+        document.getElementById('success')
+    ];
+    
+    // Start webcam when page loads
+    startWebcam();
+    
+    // Verify Button
+    document.getElementById('verify-btn').addEventListener('click', function() {
+        verifyFace();
+    });
+    
+    // Candidate select
+    document.getElementById('candidate').addEventListener('change', function() {
+        const candidateId = this.value;
+        if (candidateId) {
+            selectedCandidate = {
+                id: candidateId,
+                name: this.options[this.selectedIndex].text.split(' - ')[0],
+                party: this.options[this.selectedIndex].text.split(' - ')[1]
+            };
+            
+            updateCandidatePreview();
+            document.getElementById('step2-next').disabled = false;
+        } else {
+            document.getElementById('step2-next').disabled = true;
+            document.getElementById('candidate-preview').classList.add('d-none');
+        }
+    });
+    
+    // Step 2 Next Button
+    document.getElementById('step2-next').addEventListener('click', function() {
+        if (selectedCandidate) {
+            document.getElementById('confirm-name').textContent = selectedCandidate.name;
+            document.getElementById('confirm-party').textContent = selectedCandidate.party;
+            goToStep(3);
+        }
+    });
+    
+    // Step 3 Back Button
+    document.getElementById('step3-back').addEventListener('click', function() {
+        goToStep(2);
+    });
+    
+    // Cast Vote Button
+    document.getElementById('cast-vote-btn').addEventListener('click', function() {
+        castVote();
+    });
+    
+    // Return Home Button
+    document.getElementById('return-home').addEventListener('click', function() {
+        resetVotingProcess();
+    });
+    
+    function goToStep(step) {
+        currentStep = step;
+        
+        // Hide all steps
+        steps.forEach(stepEl => {
+            stepEl.classList.add('d-none');
+        });
+        
+        // Show current step
+        steps[step-1].classList.remove('d-none');
+    }
+    
+    function startWebcam() {
+        const video = document.getElementById('webcam');
+        
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    videoStream = stream;
+                    video.srcObject = stream;
+                    video.play();
+                })
+                .catch(function(err) {
+                    console.error("Error accessing webcam:", err);
+                    showToast('Could not access your camera. Please check permissions.', 'danger');
+                });
+        } else {
+            showToast('Your browser does not support webcam access.', 'danger');
+        }
+    }
+    
+    function stopWebcam() {
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => {
+                track.stop();
+            });
+            videoStream = null;
+        }
+    }
+    
+    function verifyFace() {
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        const verifyBtn = document.getElementById('verify-btn');
+        const progressDiv = document.getElementById('verification-progress');
+        const progressBar = document.getElementById('progress-bar');
+        
+        if (!video.videoWidth) {
+            showToast('Camera not ready yet. Please wait a moment.', 'warning');
+            return;
+        }
+        
+        // Disable button during verification
+        verifyBtn.disabled = true;
+        verifyBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Verifying...';
+        
+        // Show progress
+        progressDiv.classList.remove('d-none');
+        
+        // Simulate progress (in real app, this would happen during face matching)
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 5;
+            progressBar.style.width = `${progress}%`;
+            
+            if (progress >= 100) {
+                clearInterval(interval);
+                // Capture image when done
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                faceImageData = canvas.toDataURL('image/png');
+                completeVerification();
+            }
+        }, 100);
+    }
+    
+    function completeVerification() {
+        const verifyBtn = document.getElementById('verify-btn');
+        const progressDiv = document.getElementById('verification-progress');
+        
+        // In a real app, you'd send the face data to the server for verification
+        // Here we're just simulating with a success rate
+        fetch('/vote', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                faceImage: faceImageData
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            setTimeout(() => {
+                progressDiv.classList.add('d-none');
+                verifyBtn.disabled = false;
+                verifyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-shield-check me-2" viewBox="0 0 16 16"><path d="M5.338 1.59a61 61 0 0 0-2.837.856.48.48 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.7 10.7 0 0 0 2.287 2.233c.346.244.652.42.893.533q.18.085.293.118a1 1 0 0 0 .101.025 1 1 0 0 0 .1-.025q.114-.034.294-.118c.24-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.8 11.8 0 0 1-2.517 2.453 7 7 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7 7 0 0 1-1.048-.625 11.8 11.8 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 63 63 0 0 1 5.072.56z"/><path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/></svg> Verify Identity';
+                
+                if (data.success) {
+                    stopWebcam();
+                    goToStep(2);
+                    showToast('Identity verified successfully!', 'success');
+                } else {
+                    showToast('Identity verification failed. Please try again or contact an administrator.', 'danger');
+                }
+            }, 500);
+        })
+        .catch(error => {
+            console.error('Verification error:', error);
+            progressDiv.classList.add('d-none');
+            verifyBtn.disabled = false;
+            verifyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-shield-check me-2" viewBox="0 0 16 16"><path d="M5.338 1.59a61 61 0 0 0-2.837.856.48.48 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.7 10.7 0 0 0 2.287 2.233c.346.244.652.42.893.533q.18.085.293.118a1 1 0 0 0 .101.025 1 1 0 0 0 .1-.025q.114-.034.294-.118c.24-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.8 11.8 0 0 1-2.517 2.453 7 7 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7 7 0 0 1-1.048-.625 11.8 11.8 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 63 63 0 0 1 5.072.56z"/><path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/></svg> Verify Identity';
+            showToast('Error during verification. Please try again.', 'danger');
+        });
+    }
+    
+    function updateCandidatePreview() {
+        if (selectedCandidate) {
+            document.getElementById('preview-name').textContent = selectedCandidate.name;
+            document.getElementById('preview-party').textContent = selectedCandidate.party;
+            document.getElementById('candidate-preview').classList.remove('d-none');
+        }
+    }
+    
+    function castVote() {
+        if (!selectedCandidate) {
+            showToast('Please select a candidate first', 'danger');
+            return;
+        }
+        
+        const castBtn = document.getElementById('cast-vote-btn');
+        castBtn.disabled = true;
+        castBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+        
+        fetch('/vote', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                faceImage: faceImageData,
+                candidateId: selectedCandidate.id
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                goToStep(4); // Success step
+                showToast('Your vote has been recorded successfully!', 'success');
+            } else {
+                showToast(data.message || 'Voting failed. You may have already voted or your registration is not approved.', 'danger');
+                castBtn.disabled = false;
+                castBtn.innerHTML = 'Cast Vote';
+            }
+        })
+        .catch(error => {
+            console.error('Voting error:', error);
+            showToast('There was a problem casting your vote. Please try again.', 'danger');
+            castBtn.disabled = false;
+            castBtn.innerHTML = 'Cast Vote';
+        });
+    }
+    
+    function resetVotingProcess() {
+        selectedCandidate = null;
+        faceImageData = null;
+        document.getElementById('candidate').value = '';
+        document.getElementById('candidate-preview').classList.add('d-none');
+        document.getElementById('step2-next').disabled = true;
+        document.getElementById('cast-vote-btn').disabled = false;
+        document.getElementById('cast-vote-btn').innerHTML = 'Cast Vote';
+        
+        goToStep(1);
+        startWebcam();
+    }
+    
+    function showToast(message, type) {
+        const toastContainer = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${type} border-0`;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        
+        const toastBody = document.createElement('div');
+        toastBody.className = 'd-flex';
+        
+        const flexGrow = document.createElement('div');
+        flexGrow.className = 'toast-body';
+        flexGrow.textContent = message;
+        
+        const closeButton = document.createElement('button');
+        closeButton.type = 'button';
+        closeButton.className = 'btn-close btn-close-white me-2 m-auto';
+        closeButton.setAttribute('data-bs-dismiss', 'toast');
+        closeButton.setAttribute('aria-label', 'Close');
+        
+        toastBody.appendChild(flexGrow);
+        toastBody.appendChild(closeButton);
+        toast.appendChild(toastBody);
+        toastContainer.appendChild(toast);
+        
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        
+        toast.addEventListener('hidden.bs.toast', function () {
+            toastContainer.removeChild(toast);
+        });
+    }
+});
+</script>
+{% endblock %}
