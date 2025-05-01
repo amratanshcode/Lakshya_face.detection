@@ -1,11 +1,7 @@
-
-// Global utility functions
-
-/**
- * Shows a toast notification
- * @param {string} message - The message to display
- * @param {string} type - The type of toast (success, danger, warning)
- */
+//** Shows a toast notification on the screen
+// * @param {string} message - The message to display
+// * @param {string} type - The type of toast (success, danger, warning)
+//
 function showToast(message, type) {
     const toastContainer = document.getElementById('toast-container');
     if (!toastContainer) return;
